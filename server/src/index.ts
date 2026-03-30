@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes';
 import walletRoutes from './routes/walletRoutes';
 import transactionRoutes from './routes/transactionRoutes';
+import userRoutes from './routes/userRoutes';
 
 // Load environment variables (.env locally, or production variables on Render/Heroku)
 dotenv.config();
@@ -20,6 +21,7 @@ app.use(express.json()); // Parse incoming JSON payloads natively
 app.use('/api/auth', authRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/transactions', transactionRoutes);
+app.use('/api/users', userRoutes);
 
 // Root path & Health Check API
 app.get('/api/health', (req, res) => {
