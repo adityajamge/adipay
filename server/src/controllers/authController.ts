@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import { AuthRequest } from '../middleware/authMiddleware';
 
 // Utility helper to sign JWTs natively enforcing Section 7 Payload Spec
@@ -18,11 +19,14 @@ export const signup = async (req: Request, res: Response) => {
   try {
     const { full_name, email, phone, password } = req.body;
     
+    // Hash password via bcrypt with exactly 12 salt rounds globally (anti-theft spec)
+    const salt = await bcrypt.genSalt(12);
+    const password_hash = await bcrypt.hash(password, salt);
+    
     // TODO: Verify if email/phone exists
-    // TODO: Hash password via bcrypt
-    // TODO: Insert into database
+    // TODO: Insert into database passing `password_hash` instead of raw `password`
 
-    // Mock response following 5.2 spec exactly
+    // Mock response following 5.2 spec exactly (never exposing password_hash)
     const user = { user_id: 1, full_name, email, phone };
     const token = generateToken(user.user_id, user.email);
 
@@ -43,8 +47,11 @@ export const login = async (req: Request, res: Response) => {
   try {
     const { identifier, password } = req.body;
     
-    // TODO: Fetch user by email OR phone
-    // TODO: Compare hashed passwords via bcrypt.compare
+    // TODO: Fetch user object natively isolating hashed string from DB payload
+    
+    // Security Action: Block logic bypassing matching string comparisons
+    // const isMatch = await bcrypt.compare(password, userFromDb.password_hash);
+    // if (!isMatch) return res.status(401).json({ success: false, message: 'Invalid credentials' });
 
     // Mock success resolving to spec
     const user = { 
