@@ -1,0 +1,3 @@
+src/pages/LoginPage.tsx(5,38): error TS2307: Cannot find module '@capacitor/haptics' or its corresponding type declarations.
+src/pages/OnboardingPage.tsx(86,25): error TS6133: 'e' is declared but its value is never read.
+src/pages/SignupPage.tsx(5,56): error TS2307: Cannot find module '@capacitor/haptics' or its corresponding type declarations.
