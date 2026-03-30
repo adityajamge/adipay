@@ -2,28 +2,41 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'framer-motion';
 import { Preferences } from '@capacitor/preferences';
+import { authService } from '../services/authService';
 
 export default function SplashPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const checkToken = async () => {
+    const checkAuthStatus = async () => {
       try {
         const { value: token } = await Preferences.get({ key: 'jwt_token' });
-        // Simulate a 2-second delay for the splash screen animations
-        setTimeout(() => {
-          if (token) {
-            navigate('/home', { replace: true });
-          } else {
-            navigate('/onboarding', { replace: true });
+        
+        // Default unregistered route
+        let targetRoute = '/onboarding';
+
+        if (token) {
+          try {
+            // Natively validate JWT explicitly against backend server
+            await authService.getMe();
+            targetRoute = '/home';
+          } catch (e) {
+            // Native Axios logic intercepts 401 Unauthorized via api.ts and securely wipes local token
+            await Preferences.remove({ key: 'jwt_token' });
+            targetRoute = '/login';
           }
-        }, 2000);
+        }
+
+        // Delay navigation for 1.5 seconds guaranteeing fluid graphic initialization
+        setTimeout(() => {
+          navigate(targetRoute, { replace: true });
+        }, 1500);
       } catch (error) {
         navigate('/onboarding', { replace: true });
       }
     };
 
-    checkToken();
+    checkAuthStatus();
   }, [navigate]);
 
   return (

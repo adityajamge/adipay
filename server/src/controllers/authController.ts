@@ -2,12 +2,12 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { AuthRequest } from '../middleware/authMiddleware';
 
-// Utility helper to sign JWTs natively
-const generateToken = (user_id: number, email: string, phone: string) => {
+// Utility helper to sign JWTs natively enforcing Section 7 Payload Spec
+const generateToken = (user_id: number, email: string) => {
   return jwt.sign(
-    { user_id, email, phone },
+    { user_id, email },
     process.env.JWT_SECRET || 'adipay_secure_fallback_secret',
-    { expiresIn: '30d' }
+    { expiresIn: '7d', algorithm: 'HS256' } // 7-day expiry explicitly bounded
   );
 };
 
@@ -24,7 +24,7 @@ export const signup = async (req: Request, res: Response) => {
 
     // Mock response following 5.2 spec exactly
     const user = { user_id: 1, full_name, email, phone };
-    const token = generateToken(user.user_id, user.email, user.phone);
+    const token = generateToken(user.user_id, user.email);
 
     return res.status(201).json({
       success: true,
@@ -53,7 +53,7 @@ export const login = async (req: Request, res: Response) => {
       email: identifier.includes('@') ? identifier : 'aditya@example.com', 
       phone: identifier.includes('@') ? '9876543210' : identifier 
     };
-    const token = generateToken(user.user_id, user.email, user.phone);
+    const token = generateToken(user.user_id, user.email);
 
     return res.status(200).json({
       success: true,
