@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate } from 'react-router';
+import { Routes, Route, Navigate, useLocation } from 'react-router';
+import { AnimatePresence, motion } from 'framer-motion';
 import SplashPage from './pages/SplashPage';
 import OnboardingPage from './pages/OnboardingPage';
 import HomePage from './pages/HomePage';
@@ -10,20 +11,36 @@ import TransactionHistoryPage from './pages/TransactionHistoryPage';
 import TransactionDetailPage from './pages/TransactionDetailPage';
 import ProfilePage from './pages/ProfilePage';
 
+const PageTransition = ({ children }: { children: React.ReactNode }) => (
+  <motion.div
+    initial={{ opacity: 0, x: 20 }}
+    animate={{ opacity: 1, x: 0 }}
+    exit={{ opacity: 0, x: -20 }}
+    transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+    className="h-full w-full bg-bg-primary"
+  >
+    {children}
+  </motion.div>
+);
+
 export default function App() {
+  const location = useLocation();
+  
   return (
-    <Routes>
-      <Route path="/splash" element={<SplashPage />} />
-      <Route path="/onboarding" element={<OnboardingPage />} />
-      <Route path="/home" element={<HomePage />} />
-      <Route path="/send" element={<SendMoneyPage />} />
-      <Route path="/add-money" element={<AddMoneyPage />} />
-      <Route path="/history" element={<TransactionHistoryPage />} />
-      <Route path="/transaction/:id" element={<TransactionDetailPage />} />
-      <Route path="/profile" element={<ProfilePage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
-      <Route path="*" element={<Navigate to="/splash" replace />} />
-    </Routes>
+    <AnimatePresence mode="wait" initial={false}>
+      <Routes location={location} key={location.pathname}>
+        <Route path="/splash" element={<PageTransition><SplashPage /></PageTransition>} />
+        <Route path="/onboarding" element={<PageTransition><OnboardingPage /></PageTransition>} />
+        <Route path="/home" element={<PageTransition><HomePage /></PageTransition>} />
+        <Route path="/send" element={<PageTransition><SendMoneyPage /></PageTransition>} />
+        <Route path="/add-money" element={<PageTransition><AddMoneyPage /></PageTransition>} />
+        <Route path="/history" element={<PageTransition><TransactionHistoryPage /></PageTransition>} />
+        <Route path="/transaction/:id" element={<PageTransition><TransactionDetailPage /></PageTransition>} />
+        <Route path="/profile" element={<PageTransition><ProfilePage /></PageTransition>} />
+        <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
+        <Route path="/signup" element={<PageTransition><SignupPage /></PageTransition>} />
+        <Route path="*" element={<Navigate to="/splash" replace />} />
+      </Routes>
+    </AnimatePresence>
   );
 }
