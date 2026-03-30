@@ -3,3 +3,12 @@
 .env.local
 .env.*.local
 !.env.example
+
+# Node Modules (Globally ignored across all subdirectories)
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# OS Specific
+.DS_Store
+Thumbs.db

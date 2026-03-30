@@ -36,7 +36,7 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/users', userRoutes);
 
 // Root path & Health Check API
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (req: express.Request, res: express.Response) => {
   res.status(200).json({
     success: true,
     message: 'AdiPay API is running stably.',
@@ -45,7 +45,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Fallback 404 handler
-app.use((req, res) => {
+app.use((req: express.Request, res: express.Response) => {
   res.status(404).json({ success: false, message: 'Endpoint Not Found' });
 });
 
