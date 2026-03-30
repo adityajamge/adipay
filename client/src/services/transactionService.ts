@@ -2,14 +2,14 @@ import api from './api';
 
 export const transactionService = {
   // Push an active debit transmission securely passing payload
-  sendMoney: async (data: { receiver_identifier: string, amount: number, note?: string }) => {
+  sendMoney: async (data: { recipient_identifier: string, amount: number, description?: string }) => {
     const response = await api.post('/transactions/send', data);
     return response.data;
   },
   
-  // Scrape descending list of successful historical debits/credits
-  getHistory: async () => {
-    const response = await api.get('/transactions/history');
+  // Scrape descending list of successful historical debits/credits supporting params
+  getHistory: async (page = 1, limit = 20, filter = 'all') => {
+    const response = await api.get(`/transactions/history?page=${page}&limit=${limit}&filter=${filter}`);
     return response.data;
   },
   

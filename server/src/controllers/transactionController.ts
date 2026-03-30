@@ -6,7 +6,7 @@ import { AuthRequest } from '../middleware/authMiddleware';
 // @access  Private
 export const sendMoney = async (req: AuthRequest, res: Response) => {
   try {
-    const { receiver_identifier, amount, note } = req.body;
+    const { recipient_identifier, amount, description } = req.body;
     
     // TODO: Verify sender has enough balance
     // TODO: Wrap inside isolated Database Transaction transferring values safely
@@ -14,13 +14,19 @@ export const sendMoney = async (req: AuthRequest, res: Response) => {
     return res.status(200).json({
       success: true,
       data: {
-        message: 'Transfer successful',
         transaction: {
-          reference_no: `ADP-TXN-${Math.floor(Math.random() * 1000000)}`,
+          transaction_id: 42,
+          reference_no: `ADP-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-A7K3`,
           amount: Number(amount),
-          type: 'DEBIT',
-          note: note || ''
-        }
+          transaction_type: 'TRANSFER',
+          description: description || 'Transfer',
+          recipient: {
+            full_name: 'Parth Kondhawale',
+            phone: recipient_identifier.includes('@') ? '9876543210' : recipient_identifier
+          },
+          created_at: new Date().toISOString()
+        },
+        new_balance: 11950.00
       }
     });
   } catch (error) {
@@ -33,16 +39,40 @@ export const sendMoney = async (req: AuthRequest, res: Response) => {
 // @access  Private
 export const getHistory = async (req: AuthRequest, res: Response) => {
   try {
-    // TODO: JOIN Query against transactions table where sender_id or receiver_id maps to user_id
-    // TODO: Order by created_at DESC
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 20;
+    const filter = req.query.filter || 'all';
+
+    // TODO: JOIN Query against transactions table based on pagination constraints
     
     return res.status(200).json({
       success: true,
       data: {
-        transactions: [] // Send array footprint
+        transactions: [
+          {
+            transaction_id: 42,
+            reference_no: "ADP-20260330-A7K3",
+            amount: 500.00,
+            transaction_type: "TRANSFER",
+            direction: "SENT",
+            description: "Lunch money",
+            counterparty: {
+              full_name: "Parth Kondhawale",
+              phone: "9876543210"
+            },
+            created_at: "2026-03-30T14:30:00Z"
+          }
+        ],
+        pagination: {
+          page,
+          limit,
+          total: 45,
+          has_more: true
+        }
       }
     });
   } catch (error) {
+    console.error('History Query Error:', error);
     return res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
