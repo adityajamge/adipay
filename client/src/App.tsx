@@ -6,6 +6,8 @@ import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import SendMoneyPage from './pages/SendMoneyPage';
 import AddMoneyPage from './pages/AddMoneyPage';
+import TransactionHistoryPage from './pages/TransactionHistoryPage';
+import TransactionDetailPage from './pages/TransactionDetailPage';
 
 export default function App() {
   return (
@@ -15,6 +17,8 @@ export default function App() {
       <Route path="/home" element={<HomePage />} />
       <Route path="/send" element={<SendMoneyPage />} />
       <Route path="/add-money" element={<AddMoneyPage />} />
+      <Route path="/history" element={<TransactionHistoryPage />} />
+      <Route path="/transaction/:id" element={<TransactionDetailPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
       <Route path="*" element={<Navigate to="/splash" replace />} />
