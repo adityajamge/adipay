@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowUpRight, ArrowDownLeft, Wallet, Home, Clock, User, FileText, Send } from 'lucide-react';
 import { useNavigate } from 'react-router';
