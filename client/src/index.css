@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-primary: #0a0a0f;
+  --color-bg-secondary: #12121a;
+  --color-bg-tertiary: #1a1a28;
+
+  --color-brand-primary: #4285F4;
+  --color-accent-send: #EA4335;
+  --color-accent-receive: #34A853;
+  --color-accent-warning: #FBBC04;
+
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #8B8FA3;
+  --color-text-tertiary: #5A5E72;
+
+  --color-border-subtle: rgba(255, 255, 255, 0.06);
+  --color-glass: rgba(255, 255, 255, 0.04);
+  
+  --font-heading: "DM Sans", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "DM Mono", monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  @apply antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+}
+
+.tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Glassmorphism Utility */
+.glass-panel {
+  background-color: var(--color-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border-subtle);
+}
+
+/* Accent Gradient Utility */
+.bg-gradient-brand {
+  background: linear-gradient(135deg, var(--color-brand-primary) 0%, var(--color-accent-receive) 100%);
+}
