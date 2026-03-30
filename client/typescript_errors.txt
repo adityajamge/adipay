@@ -1,0 +1,23 @@
+src/App.tsx(2,24): error TS6142: Module './pages/SplashPage' was resolved to 'D:/Projects/AdiPay/client/src/pages/SplashPage.tsx', but '--jsx' is not set.
+src/App.tsx(3,28): error TS6142: Module './pages/OnboardingPage' was resolved to 'D:/Projects/AdiPay/client/src/pages/OnboardingPage.tsx', but '--jsx' is not set.
+src/App.tsx(4,22): error TS6142: Module './pages/HomePage' was resolved to 'D:/Projects/AdiPay/client/src/pages/HomePage.tsx', but '--jsx' is not set.
+src/App.tsx(8,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/App.tsx(9,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/App.tsx(9,38): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/App.tsx(10,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/App.tsx(10,42): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/App.tsx(11,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/App.tsx(11,36): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/App.tsx(12,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/App.tsx(12,32): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/main.tsx(5,17): error TS6142: Module './App.tsx' was resolved to 'D:/Projects/AdiPay/client/src/App.tsx', but '--jsx' is not set.
+src/main.tsx(8,3): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/main.tsx(9,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/main.tsx(10,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/pages/HomePage.tsx(3,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/pages/OnboardingPage.tsx(3,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/pages/SplashPage.tsx(30,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/pages/SplashPage.tsx(31,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/pages/SplashPage.tsx(37,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/pages/SplashPage.tsx(41,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/pages/SplashPage.tsx(43,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
