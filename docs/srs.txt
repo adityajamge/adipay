@@ -1,0 +1,199 @@
+JSPM's Rajarshi Shahu College of Engineering
+Tathawade, Pune
+Department of Computer Science and Business Systems
+Software Requirements Specification
+(SRS Document)
+
+AdiPay - Online Payment System
+Course Code: CB2208T
+
+Course Name: Database Management Systems
+
+Submitted By
+Sr. No.	Name	PRN No.
+1	Aditya Babanrao Jamge	RBTL25CB076
+2	Parth Kondhawale	RBTL25CB075
+Under the Guidance of
+
+Prof. R.S. BACHHAV
+
+Academic Year: 2025-26
+Table of Contents
+1. Introduction
+1.1 Purpose
+1.2 Scope
+1.3 Definitions and Abbreviations
+2. Overall Description
+2.1 Product Perspective
+2.2 Product Functions
+2.3 User Characteristics
+2.4 Constraints
+3. Functional Requirements
+4. Non-Functional Requirements
+5. Database Design
+5.1 ER Diagram Description
+5.2 Database Schema
+5.3 SQL Schema
+6. Conclusion
+1. Introduction
+1.1 Purpose
+This Software Requirements Specification (SRS) document describes the requirements for "AdiPay - Online Payment System", a mobile application that enables users to perform digital financial transactions. This document serves as a guide for development and evaluation as part of the Database Management Systems course (CB2208T).
+
+1.2 Scope
+AdiPay is an online payment system that allows users to:
+
+Create accounts through secure signup and login
+Send money to other registered users
+Receive money from other users
+Check their current account balance
+View complete transaction history
+The system is developed as a mobile application using Next.js framework with Capacitor.js for mobile deployment, and PostgreSQL (hosted on Neon.tech) as the database.
+
+1.3 Definitions and Abbreviations
+Term	Definition
+SRS	Software Requirements Specification
+DBMS	Database Management System
+API	Application Programming Interface
+PostgreSQL	Open-source relational database (hosted on Neon.tech)
+Neon.tech	Serverless PostgreSQL cloud platform
+Next.js	React-based web framework
+Capacitor.js	Cross-platform mobile runtime
+JWT	JSON Web Token - secure authentication tokens
+2. Overall Description
+2.1 Product Perspective
+AdiPay is a standalone mobile payment application with a three-tier architecture:
+
+Presentation Layer: Mobile app using Next.js + Capacitor.js
+Application Layer: Next.js API routes for business logic
+Data Layer: PostgreSQL database (Neon.tech)
+2.2 Product Functions
+ID	Function	Description
+F01	Sign Up	New user registration
+F02	Login	User authentication
+F03	Send Money	Transfer funds to other users
+F04	Receive Money	Accept incoming transfers
+F05	Check Balance	View current balance
+F06	Add Money	Add funds to wallet
+F07	Transaction History	View past transactions
+2.3 User Characteristics
+Target users are individuals (18+) with basic smartphone skills who want to send and receive money digitally.
+
+2.4 Constraints
+Requires active internet connection
+Users must have Android or iOS device
+Transactions limited to registered platform users
+Academic project - no actual banking integration
+3. Functional Requirements
+3.1 User Registration (FR-001)
+Input	Full name, Email, Phone number, Password
+Process	Validate data, check duplicates, hash password, create account
+Output	Success message or error
+3.2 User Login (FR-002)
+Input	Email/Phone, Password
+Process	Validate credentials, generate JWT token for session
+Output	JWT token, redirect to dashboard or error message
+3.3 Send Money (FR-003)
+Input	Recipient phone/email, Amount, Optional note
+Process	Validate recipient, check balance, debit sender, credit receiver, log transaction
+Output	Transaction confirmation with reference number
+3.4 Receive Money (FR-004)
+Input	Incoming transfer from sender
+Process	Credit amount to account, update balance
+Output	Updated balance, notification
+3.5 Add Money to Wallet (FR-005)
+Input	Amount to add
+Process	Validate amount, credit wallet balance, log transaction
+Output	Updated balance, transaction confirmation
+3.6 Check Balance (FR-006)
+Input	User JWT token
+Process	Validate JWT, retrieve balance from database
+Output	Current balance displayed on dashboard
+3.7 Transaction History (FR-007)
+Input	User session token
+Process	Query transactions, sort by date
+Output	List of transactions (date, amount, type, party)
+4. Non-Functional Requirements
+4.1 Performance
+Response time shall not exceed 3 seconds
+Support minimum 100 concurrent users
+4.2 Security
+Passwords stored using bcrypt hashing
+Data transmission encrypted via HTTPS
+Session expires after 30 minutes of inactivity
+Input validation to prevent SQL injection
+4.3 Reliability
+ACID compliance for all transactions
+Automatic rollback on transaction failures
+4.4 Usability
+Intuitive UI requiring no training
+Clear error messages and feedback
+5. Database Design
+5.1 ER Diagram Description
+Entities:
+
+Users: Stores user account information
+Accounts: Stores balance and account details
+Transactions: Records all financial transactions
+Relationships:
+
+User ↔ Account: One-to-One (1:1)
+Account ↔ Transactions: One-to-Many (1:N)
+5.2 Database Schema
+Users Table:
+
+Column	Type	Constraints
+user_id	SERIAL	PRIMARY KEY
+full_name	VARCHAR(100)	NOT NULL
+email	VARCHAR(255)	UNIQUE, NOT NULL
+phone	VARCHAR(15)	UNIQUE, NOT NULL
+password_hash	VARCHAR(255)	NOT NULL
+created_at	TIMESTAMP	DEFAULT NOW()
+Accounts Table:
+
+Column	Type	Constraints
+account_id	SERIAL	PRIMARY KEY
+user_id	INTEGER	FOREIGN KEY REFERENCES users(user_id)
+balance	DECIMAL(15,2)	DEFAULT 0.00
+is_active	BOOLEAN	DEFAULT TRUE
+created_at	TIMESTAMP	DEFAULT NOW()
+Transactions Table:
+
+Column	Type	Constraints
+transaction_id	SERIAL	PRIMARY KEY
+reference_no	VARCHAR(50)	UNIQUE, NOT NULL
+sender_id	INTEGER	FOREIGN KEY
+receiver_id	INTEGER	FOREIGN KEY
+amount	DECIMAL(15,2)	NOT NULL
+transaction_type	VARCHAR(20)	NOT NULL
+description	TEXT	NULLABLE
+created_at	TIMESTAMP	DEFAULT NOW()
+5.3 SQL Schema
+CREATE TABLE users (
+                user_id SERIAL PRIMARY KEY,
+                full_name VARCHAR(100) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                phone VARCHAR(15) UNIQUE NOT NULL,
+                password_hash VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE accounts (
+                account_id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(user_id),
+                balance DECIMAL(15,2) DEFAULT 0.00,
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE transactions (
+                transaction_id SERIAL PRIMARY KEY,
+                reference_no VARCHAR(50) UNIQUE NOT NULL,
+                sender_id INTEGER REFERENCES accounts(account_id),
+                receiver_id INTEGER REFERENCES accounts(account_id),
+                amount DECIMAL(15,2) NOT NULL,
+                transaction_type VARCHAR(20) NOT NULL,
+                description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+6. Conclusion
+This SRS document outlines the complete requirements for the AdiPay Online Payment System. The application provides essential payment functionalities including user registration, authentication, money transfer, and transaction tracking. The system is designed with a focus on security, reliability, and user experience using modern technologies like Next.js, Capacitor.js, and PostgreSQL database.
