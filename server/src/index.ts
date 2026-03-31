@@ -15,11 +15,33 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const corsOrigin = (process.env.CORS_ORIGIN || '*').trim();
+const allowedOrigins = corsOrigin === '*'
+  ? ['*']
+  : corsOrigin.split(',').map((origin) => origin.trim()).filter(Boolean);
+
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // Allow server-to-server and native requests that may not send an Origin header.
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error('CORS policy: origin not allowed'));
+  },
+};
+
 // Security Middleware: Helmet injects HSTS effectively preventing Man-in-the-Middle payloads
 app.use(helmet()); 
 
 // Middleware
-app.use(cors()); // Allow cross-origin requests from the React/Capacitor frontend
+app.use(cors(corsOptions)); // Allow cross-origin requests from the React/Capacitor frontend
 app.use(express.json()); // Parse incoming JSON payloads natively
 
 // Security Middleware: Rate Limit Brute Force Protection (100 req per 15min)
