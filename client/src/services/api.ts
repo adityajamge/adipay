@@ -4,7 +4,7 @@ import { Preferences } from '@capacitor/preferences';
 // 5. Backend API Design -> 5.1 Base URL
 // Vite exposes import.meta.env.MODE to determine the current environment
 const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.MODE === 'production' 
-  ? 'https://adipay-api.onrender.com/api'
+  ? 'https://adipay.onrender.com/api'
   : 'http://localhost:3000/api');
 
 const api = axios.create({

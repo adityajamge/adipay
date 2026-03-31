@@ -16,9 +16,23 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 const corsOrigin = (process.env.CORS_ORIGIN || '*').trim();
-const allowedOrigins = corsOrigin === '*'
+const normalizeOrigin = (origin: string) => origin.trim().replace(/\/$/, '');
+
+const configuredOrigins = corsOrigin === '*'
   ? ['*']
-  : corsOrigin.split(',').map((origin) => origin.trim()).filter(Boolean);
+  : corsOrigin.split(',').map(normalizeOrigin).filter(Boolean);
+
+// Keep localhost origins enabled to make local-web + Capacitor testing reliable.
+const localDevOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost',
+  'capacitor://localhost',
+].map(normalizeOrigin);
+
+const allowedOrigins = configuredOrigins.includes('*')
+  ? ['*']
+  : Array.from(new Set([...configuredOrigins, ...localDevOrigins]));
 
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
@@ -28,7 +42,9 @@ const corsOptions: cors.CorsOptions = {
       return;
     }
 
-    if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+    const normalizedOrigin = normalizeOrigin(origin);
+
+    if (allowedOrigins.includes('*') || allowedOrigins.includes(normalizedOrigin)) {
       callback(null, true);
       return;
     }
