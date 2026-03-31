@@ -6,6 +6,7 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import SendMoneyPage from './pages/SendMoneyPage';
+import RequestMoneyPage from './pages/RequestMoneyPage';
 import AddMoneyPage from './pages/AddMoneyPage';
 import TransactionHistoryPage from './pages/TransactionHistoryPage';
 import TransactionDetailPage from './pages/TransactionDetailPage';
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="/onboarding" element={<PageTransition><OnboardingPage /></PageTransition>} />
         <Route path="/home" element={<PageTransition><HomePage /></PageTransition>} />
         <Route path="/send" element={<PageTransition><SendMoneyPage /></PageTransition>} />
+        <Route path="/request" element={<PageTransition><RequestMoneyPage /></PageTransition>} />
         <Route path="/add-money" element={<PageTransition><AddMoneyPage /></PageTransition>} />
         <Route path="/history" element={<PageTransition><TransactionHistoryPage /></PageTransition>} />
         <Route path="/transaction/:id" element={<PageTransition><TransactionDetailPage /></PageTransition>} />

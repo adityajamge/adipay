@@ -39,6 +39,15 @@ const mapTransaction = (tx: any) => {
   };
 };
 
+const mapRequest = (request: any) => ({
+  ...request,
+  id: String(request?.id ?? request?.request_id),
+  request_id: request?.request_id ?? (typeof request?.id === 'number' ? request.id : undefined),
+  amount: Number(request?.amount ?? 0),
+  status: String(request?.status || 'PENDING').toUpperCase(),
+  created_at: request?.created_at,
+});
+
 export const transactionService = {
   // Push an active debit transmission securely passing payload
   sendMoney: async (data: { recipient_identifier: string, amount: number, description?: string }) => {
@@ -48,6 +57,43 @@ export const transactionService = {
       ...payload,
       transaction: payload.transaction ? mapTransaction(payload.transaction) : undefined,
     };
+  },
+
+  // Create a pending money request from another user
+  requestMoney: async (data: { payer_identifier: string, amount: number, description?: string }) => {
+    const response = await api.post('/transactions/request', data);
+    const payload = unwrap(response) || {};
+    return {
+      ...payload,
+      request: payload.request ? mapRequest(payload.request) : undefined,
+    };
+  },
+
+  // Get pending requests where current user is payer (incoming) or requester (outgoing)
+  getPendingRequests: async () => {
+    const response = await api.get('/transactions/requests');
+    const payload = unwrap(response) || {};
+    return {
+      ...payload,
+      incoming: Array.isArray(payload.incoming) ? payload.incoming.map(mapRequest) : [],
+      outgoing: Array.isArray(payload.outgoing) ? payload.outgoing.map(mapRequest) : [],
+    };
+  },
+
+  // Pay a specific pending request
+  payRequest: async (id: string) => {
+    const response = await api.post(`/transactions/requests/${id}/pay`);
+    const payload = unwrap(response) || {};
+    return {
+      ...payload,
+      transaction: payload.transaction ? mapTransaction(payload.transaction) : undefined,
+    };
+  },
+
+  // Reject or cancel a pending request
+  rejectRequest: async (id: string) => {
+    const response = await api.post(`/transactions/requests/${id}/reject`);
+    return unwrap(response) || {};
   },
   
   // Scrape descending list of successful historical debits/credits supporting params

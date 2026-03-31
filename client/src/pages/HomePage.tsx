@@ -51,7 +51,6 @@ export default function HomePage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
-  const [requestInfo, setRequestInfo] = useState('');
 
   const loadData = async (silent = false) => {
     if (!silent) {
@@ -207,11 +206,6 @@ export default function HomePage() {
               <motion.div key={i} whileTap={{ scale: 0.9 }} className="flex flex-col items-center space-y-2">
                 <button
                   onClick={() => {
-                    if (action.id === 'request') {
-                      setRequestInfo('Request money will be available in the next update.');
-                      return;
-                    }
-                    setRequestInfo('');
                     navigate(`/${action.id}`);
                   }}
                   className={`flex h-[60px] w-[60px] items-center justify-center rounded-2xl ${action.color} border border-white/5 shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-primary/50`}
@@ -223,9 +217,9 @@ export default function HomePage() {
             ))}
           </div>
 
-          {(requestInfo || loadError) && (
-            <p className={`mt-4 text-center text-sm font-medium ${loadError ? 'text-accent-send' : 'text-text-secondary'}`}>
-              {loadError || requestInfo}
+          {loadError && (
+            <p className="mt-4 text-center text-sm font-medium text-accent-send">
+              {loadError}
             </p>
           )}
         </div>
