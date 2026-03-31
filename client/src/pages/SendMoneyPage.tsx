@@ -7,6 +7,7 @@ import confetti from 'canvas-confetti';
 
 import { transactionService } from '../services/transactionService';
 import { userService } from '../services/userService';
+import { walletService } from '../services/walletService';
 
 // --- TYPES ---
 interface UserResult {
@@ -45,13 +46,18 @@ export default function SendMoneyPage() {
   const [refNumber, setRefNumber] = useState('');
   const [sendError, setSendError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [balance, setBalance] = useState<number | null>(null);
+  const [balanceLoading, setBalanceLoading] = useState(true);
+  const [balanceError, setBalanceError] = useState('');
 
   // Slider State
   const x = useMotionValue(0);
   const dragProgress = useTransform(x, [0, 220], [0, 1]);
   const bgOpacity = useTransform(dragProgress, [0, 1], [0.1, 1]);
   const textOpacity = useTransform(dragProgress, [0, 0.5], [1, 0]);
-  const canSlideToSend = Number(amount) > 0 && !isSubmitting;
+  const parsedAmount = Number(amount);
+  const hasInsufficientBalance = balance !== null && parsedAmount > balance;
+  const canSlideToSend = parsedAmount > 0 && !isSubmitting && !hasInsufficientBalance;
 
   // Debounce logic
   useEffect(() => {
@@ -82,6 +88,40 @@ export default function SendMoneyPage() {
       .finally(() => {
         if (isMounted) {
           setContactsLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    setBalanceLoading(true);
+    setBalanceError('');
+
+    walletService
+      .getBalance()
+      .then((res: any) => {
+        if (!isMounted) {
+          return;
+        }
+
+        const nextBalance = Number(res?.balance ?? res?.new_balance ?? 0);
+        setBalance(Number.isFinite(nextBalance) ? nextBalance : 0);
+      })
+      .catch((error: any) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setBalanceError(error?.response?.data?.message || 'Unable to load balance');
+        setBalance(null);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setBalanceLoading(false);
         }
       });
 
@@ -134,12 +174,29 @@ export default function SendMoneyPage() {
       setSendError('');
       setIsSubmitting(true);
 
+      if (balance !== null && parsedAmount > balance) {
+        try {
+          await Haptics.notification({ type: NotificationType.Warning });
+        } catch {}
+        x.set(0);
+        setSendError(`Insufficient balance. Available ₹${balance.toLocaleString('en-IN')}`);
+        setIsSubmitting(false);
+        return;
+      }
+
       try {
         const response = await transactionService.sendMoney({
           recipient_identifier: selectedUser.phone, // sending by phone
           amount: parsedAmount,
           description: note
         });
+
+        const nextBalance = Number(response?.balance ?? response?.new_balance);
+        if (Number.isFinite(nextBalance)) {
+          setBalance(nextBalance);
+        } else if (balance !== null) {
+          setBalance(Math.max(0, balance - parsedAmount));
+        }
         
         await Haptics.notification({ type: NotificationType.Success });
         x.set(220);
@@ -390,6 +447,20 @@ export default function SendMoneyPage() {
                 className="w-full rounded-2xl bg-white/5 px-4 py-4 text-center text-sm text-white outline-none backdrop-blur-md transition-colors placeholder:text-text-tertiary focus:bg-white/10 border border-transparent focus:border-white/10"
               />
             </div>
+
+            <p className="mt-4 text-center text-xs text-text-secondary">
+              {balanceLoading
+                ? 'Loading balance...'
+                : balance !== null
+                  ? `Available balance: ₹${balance.toLocaleString('en-IN')}`
+                  : (balanceError || 'Balance unavailable')}
+            </p>
+
+            {!balanceLoading && hasInsufficientBalance && balance !== null && (
+              <p className="mt-2 text-center text-xs font-medium text-accent-send">
+                Amount exceeds available balance by ₹{Math.max(parsedAmount - balance, 0).toLocaleString('en-IN')}
+              </p>
+            )}
 
             {sendError && (
               <p className="mt-4 text-center text-sm font-medium text-accent-send">{sendError}</p>
