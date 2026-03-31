@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import confetti from 'canvas-confetti';
+import { Preferences } from '@capacitor/preferences';
+import { authService } from '../services/authService';
 
 const InputField = ({ id, label, type, value, onChange, error, adornment, icon, onIconClick, setErrors }: any) => (
   <div className="flex flex-col">
@@ -75,6 +77,7 @@ export default function SignupPage() {
 
   const [errors, setErrors] = useState({ fullName: '', email: '', phone: '', password: '', confirmPassword: '' });
   const [shake, setShake] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const getPasswordStrength = () => {
     if (!password) return 0;
@@ -126,20 +129,45 @@ export default function SignupPage() {
       return;
     }
 
+    setIsSubmitting(true);
+
     try {
-      await Haptics.notification({ type: NotificationType.Success });
-    } catch {}
+      const res = await authService.signup({
+        full_name: fullName,
+        email,
+        phone_number: phone,
+        password
+      });
 
-    confetti({
-      particleCount: 150,
-      spread: 80,
-      origin: { y: 0.6 },
-      colors: ['#4285F4', '#34A853', '#EA4335', '#FBBC04']
-    });
+      if (!res.token) {
+        throw new Error('Registration succeeded but auth token is missing');
+      }
 
-    setTimeout(() => {
-      navigate('/home', { replace: true });
-    }, 2000);
+      await Preferences.set({ key: 'jwt_token', value: res.token });
+
+      try {
+        await Haptics.notification({ type: NotificationType.Success });
+      } catch {}
+
+      confetti({
+        particleCount: 150,
+        spread: 80,
+        origin: { y: 0.6 },
+        colors: ['#4285F4', '#34A853', '#EA4335', '#FBBC04']
+      });
+
+      setTimeout(() => {
+        navigate('/home', { replace: true });
+      }, 2000);
+    } catch (error: any) {
+      setErrors((prev) => ({ 
+        ...prev, 
+        email: error.response?.data?.message || error.message || 'Registration failed' 
+      }));
+      await triggerShake();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -224,9 +252,10 @@ export default function SignupPage() {
           <div className="pt-6">
             <button
               type="submit"
+              disabled={isSubmitting}
               className="group flex w-full items-center justify-center space-x-2 rounded-2xl bg-gradient-to-r from-[#4285F4] to-[#5B9EF7] py-4 font-semibold text-white shadow-[0_8px_20px_-6px_rgba(66,133,244,0.6)] transition-all active:scale-[0.98]"
             >
-              <span>Create Account</span>
+              <span>{isSubmitting ? 'Creating Account...' : 'Create Account'}</span>
               <ArrowRight size={20} className="transition-transform group-hover:translate-x-1" />
             </button>
           </div>

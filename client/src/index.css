@@ -17,13 +17,32 @@
   --color-border-subtle: rgba(255, 255, 255, 0.06);
   --color-glass: rgba(255, 255, 255, 0.04);
   
-  --font-heading: "DM Sans", sans-serif;
+  --font-heading: "Inter", sans-serif;
   --font-body: "Inter", sans-serif;
-  --font-mono: "DM Mono", monospace;
+  --font-mono: ui-monospace, SFMono-Regular, monospace;
 }
 
 :root {
   color-scheme: dark;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --color-bg-primary: #f5f7fb;
+  --color-bg-secondary: #ffffff;
+  --color-bg-tertiary: #e9edf5;
+
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-tertiary: #64748b;
+
+  --color-border-subtle: rgba(15, 23, 42, 0.12);
+  --color-glass: rgba(15, 23, 42, 0.04);
 }
 
 body {
@@ -31,6 +50,7 @@ body {
   color: var(--color-text-primary);
   font-family: var(--font-body);
   @apply antialiased;
+  transition: background-color 200ms ease, color 200ms ease;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -53,4 +73,29 @@ h1, h2, h3, h4, h5, h6 {
 /* Accent Gradient Utility */
 .bg-gradient-brand {
   background: linear-gradient(135deg, var(--color-brand-primary) 0%, var(--color-accent-receive) 100%);
+}
+
+/* Light mode overrides for components that use hardcoded white utility classes */
+:root[data-theme='light'] .text-white {
+  color: #0f172a !important;
+}
+
+:root[data-theme='light'] .bg-white\/5 {
+  background-color: rgba(15, 23, 42, 0.04) !important;
+}
+
+:root[data-theme='light'] .bg-white\/10 {
+  background-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+:root[data-theme='light'] .bg-white\/20 {
+  background-color: rgba(15, 23, 42, 0.16) !important;
+}
+
+:root[data-theme='light'] .border-white\/5 {
+  border-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+:root[data-theme='light'] .border-white\/10 {
+  border-color: rgba(15, 23, 42, 0.14) !important;
 }

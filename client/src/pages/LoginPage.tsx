@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Preferences } from '@capacitor/preferences';
+import { authService } from '../services/authService';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -13,6 +15,7 @@ export default function LoginPage() {
   // States for errors to trigger shake animation
   const [errors, setErrors] = useState({ identifier: '', password: '' });
   const [shake, setShake] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const triggerShake = async () => {
     setShake((prev) => prev + 1);
@@ -53,8 +56,30 @@ export default function LoginPage() {
       await Haptics.impact({ style: ImpactStyle.Medium });
     } catch (e) {}
 
-    // Mock success -> Navigate to home
-    navigate('/home', { replace: true });
+    setIsSubmitting(true);
+
+    try {
+      const res = await authService.login(identifier, password);
+      if (res.token) {
+        await Preferences.set({ key: 'jwt_token', value: res.token });
+        navigate('/home', { replace: true });
+        return;
+      }
+
+      setErrors({
+        identifier: 'Login failed: missing auth token',
+        password: ''
+      });
+      await triggerShake();
+    } catch (error: any) {
+      setErrors({ 
+        identifier: error.response?.data?.message || 'Invalid credentials', 
+        password: '' 
+      });
+      await triggerShake();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleBack = () => {
@@ -199,9 +224,10 @@ export default function LoginPage() {
           <div className="pt-6">
             <button
               type="submit"
+              disabled={isSubmitting}
               className="group flex w-full items-center justify-center space-x-2 rounded-2xl bg-gradient-to-r from-[#4285F4] to-[#5B9EF7] py-4 font-semibold text-white shadow-[0_8px_20px_-6px_rgba(66,133,244,0.6)] transition-all active:scale-[0.98]"
             >
-              <span>Sign In</span>
+              <span>{isSubmitting ? 'Signing In...' : 'Sign In'}</span>
               <ArrowRight size={20} className="transition-transform group-hover:translate-x-1" />
             </button>
           </div>

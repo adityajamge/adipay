@@ -1,45 +1,77 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ArrowUpRight, ArrowDownLeft, Wallet, Home, Clock, User, FileText, Send } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, ArrowDownLeft, Wallet, FileText, Send } from 'lucide-react';
 import { useNavigate } from 'react-router';
+import BottomNav from '../components/BottomNav';
+import { transactionService } from '../services/transactionService';
 
-// Mock Transaction Data
-const TRANSACTIONS = [
-  { id: 'tx-100', type: 'sent', name: 'Parth Kondhawale', amount: 500.00, note: 'Lunch', time: '2:30 PM', date: 'Today' },
-  { id: 'tx-101', type: 'received', name: 'Rohan Sharma', amount: 1200.00, note: 'Books', time: '11:00 AM', date: 'Today' },
-  { id: 'tx-102', type: 'received', name: 'Priya Patel', amount: 50.00, note: 'Coffee share', time: '9:15 AM', date: 'Today' },
-  { id: 'tx-103', type: 'added', name: 'Wallet Funding', amount: 5000.00, note: 'Top up', time: '9:00 PM', date: 'Yesterday' },
-  { id: 'tx-104', type: 'sent', name: 'Amazon Prime', amount: 1499.00, note: 'Subscription', time: '6:20 PM', date: 'Yesterday' },
-  { id: 'tx-105', type: 'sent', name: 'Amit Jain', amount: 200.00, note: 'Snacks', time: '4:15 PM', date: 'March 28' },
-];
+// --- TYPES ---
+interface Transaction {
+  id: string;
+  type: 'sent' | 'received' | 'added';
+  amount: number;
+  description: string;
+  created_at: string;
+  party_name?: string;
+}
 
 export default function TransactionHistoryPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('All');
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [reloadSeed, setReloadSeed] = useState(0);
   const tabs = ['All', 'Sent', 'Received', 'Added'];
 
-  // Data logic
-  const filteredTxs = useMemo(() => {
-    if (activeTab === 'All') return TRANSACTIONS;
-    return TRANSACTIONS.filter((t) => t.type.toLowerCase() === activeTab.toLowerCase());
-  }, [activeTab]);
+  useEffect(() => {
+    let isMounted = true;
+    const filterMap: Record<string, 'all' | 'sent' | 'received' | 'added'> = {
+      All: 'all',
+      Sent: 'sent',
+      Received: 'received',
+      Added: 'added',
+    };
+
+    setLoading(true);
+    setError('');
+
+    transactionService
+      .getHistory(1, 100, filterMap[activeTab] || 'all')
+      .then((res) => {
+        if (isMounted) {
+          setTransactions(res?.transactions || []);
+        }
+      })
+      .catch((fetchError: any) => {
+        if (isMounted) {
+          setTransactions([]);
+          setError(fetchError?.response?.data?.message || 'Unable to load transaction history');
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeTab, reloadSeed]);
 
   const groupedTxs = useMemo(() => {
-    const groups: Record<string, typeof TRANSACTIONS> = {};
-    filteredTxs.forEach((tx) => {
-      if (!groups[tx.date]) groups[tx.date] = [];
-      groups[tx.date].push(tx);
+    const groups: Record<string, Transaction[]> = {};
+    transactions.forEach((tx: Transaction) => {
+      const dateObj = new Date(tx.created_at);
+      const isToday = new Date().toDateString() === dateObj.toDateString();
+      const dateStr = isToday ? 'Today' : dateObj.toLocaleDateString();
+
+      if (!groups[dateStr]) groups[dateStr] = [];
+      groups[dateStr].push(tx);
     });
     return groups;
-  }, [filteredTxs]);
-
-  // Bottom Nav items
-  const navItems = [
-    { id: 'home', icon: Home, label: 'Home', path: '/home' },
-    { id: 'send', icon: ArrowUpRight, label: 'Send', path: '/send' },
-    { id: 'history', icon: Clock, label: 'History', path: '/history' },
-    { id: 'profile', icon: User, label: 'Profile', path: '/profile' },
-  ];
+  }, [transactions]);
 
   return (
     <div className="relative flex h-screen flex-col bg-bg-primary text-text-primary overflow-hidden">
@@ -80,7 +112,25 @@ export default function TransactionHistoryPage() {
       </div>
 
       {/* --- SCROLLABLE LIST --- */}
-      {Object.keys(groupedTxs).length === 0 ? (
+      {loading ? (
+        <div className="flex-1 px-6 pb-24 pt-2">
+          <div className="animate-pulse space-y-3">
+            {[1, 2, 3, 4].map((item) => (
+              <div key={item} className="h-20 rounded-2xl border border-white/5 bg-white/5" />
+            ))}
+          </div>
+        </div>
+      ) : error ? (
+        <div className="flex flex-1 flex-col items-center justify-center px-10 pb-20 text-center">
+          <p className="text-sm font-medium text-accent-send">{error}</p>
+          <button
+            onClick={() => setReloadSeed((value) => value + 1)}
+            className="mt-4 rounded-xl bg-white/10 px-6 py-2 text-sm font-semibold text-white"
+          >
+            Retry
+          </button>
+        </div>
+      ) : Object.keys(groupedTxs).length === 0 ? (
         // Empty State
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -121,6 +171,8 @@ export default function TransactionHistoryPage() {
                   const bgClass = isDebit ? 'bg-accent-send/10' : isAdd ? 'bg-brand-primary/10' : 'bg-accent-receive/10';
                   const Icon = isDebit ? ArrowUpRight : isAdd ? Wallet : ArrowDownLeft;
                   const prefix = isDebit ? '-' : '+';
+                  const time = new Date(tx.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                  const title = tx.party_name || ((tx.type === 'added' || tx.type === 'received') ? 'Wallet' : 'Unknown');
 
                   return (
                     <motion.button
@@ -134,16 +186,17 @@ export default function TransactionHistoryPage() {
                           <Icon size={20} className={colorClass} />
                         </div>
                         <div className="truncate">
-                          <p className="truncate font-semibold text-white">{isAdd && 'Added to Wallet'} {isDebit && 'Paid to ' + tx.name} {tx.type === 'received' && 'From ' + tx.name}</p>
+                          <p className="truncate font-semibold text-white">{isAdd && 'Added to Wallet'} {isDebit && 'Paid to ' + title} {tx.type === 'received' && 'From ' + title}</p>
                           <p className="mt-0.5 truncate text-xs text-text-tertiary">
-                            {tx.note && `"${tx.note}" • `}{tx.time}
+                            {tx.description && `"${tx.description}" • `}{time}
                           </p>
                         </div>
                       </div>
                       <div className="ml-4 text-right flex-shrink-0">
                         <p className={`font-mono font-bold tracking-tight ${colorClass}`}>
-                          {prefix}₹{tx.amount.toFixed(2)}
+                          {prefix}₹{Number(tx.amount).toFixed(2)}
                         </p>
+
                       </div>
                     </motion.button>
                   );
@@ -155,36 +208,7 @@ export default function TransactionHistoryPage() {
       )}
 
       {/* --- BOTTOM NAVIGATION (Copied from Home dashboard) --- */}
-      <div className="absolute bottom-0 w-full z-30">
-        <div className="absolute inset-0 -bottom-10 bg-gradient-to-t from-[#0a0a0f] to-transparent pointer-events-none" />
-        <div className="relative flex items-center justify-around border-t border-white/10 bg-bg-secondary/40 px-6 py-4 backdrop-blur-2xl">
-          {navItems.map((tab) => {
-            const isActive = tab.id === 'history'; // Hardcode active state for this view module
-            return (
-              <button
-                key={tab.id}
-                onClick={() => navigate(tab.path)}
-                className="relative flex flex-col items-center space-y-1 p-2 focus:outline-none"
-              >
-                <tab.icon
-                  size={22}
-                  className={isActive ? 'text-brand-primary' : 'text-text-secondary transition-colors hover:text-white'}
-                  strokeWidth={isActive ? 2.5 : 2}
-                />
-                <span className={`text-[10px] font-medium transition-colors ${isActive ? 'text-brand-primary' : 'text-text-tertiary'}`}>
-                  {tab.label}
-                </span>
-                {isActive && (
-                  <motion.div
-                    layoutId="bottom-nav-indicator"
-                    className="absolute -top-1 h-1 w-1 rounded-full bg-brand-primary shadow-[0_0_8px_rgba(66,133,244,0.8)]"
-                  />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <BottomNav activeTab="history" />
     </div>
   );
 }

@@ -5,12 +5,22 @@ import { ArrowLeft, Search, ArrowRight, Check, UserIcon } from 'lucide-react';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import confetti from 'canvas-confetti';
 
-const RECENTS = [
-  { id: 1, name: 'Parth Kondhawale', phone: '+91 98765 43210', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Parth' },
-  { id: 2, name: 'Rohan Sharma', phone: '+91 87654 32109', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Rohan' },
-  { id: 3, name: 'Aarav Patel', phone: '+91 76543 21098', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Aarav' },
-  { id: 4, name: 'Vikram Singh', phone: '+91 65432 10987', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Vikram' },
-];
+import { transactionService } from '../services/transactionService';
+import { userService } from '../services/userService';
+
+// --- TYPES ---
+interface UserResult {
+  id: string;
+  full_name: string;
+  email: string;
+  phone_number: string;
+}
+
+interface RecentContact {
+  id: string; // user ID
+  full_name: string;
+  phone_number: string;
+}
 
 export default function SendMoneyPage() {
   const navigate = useNavigate();
@@ -19,22 +29,29 @@ export default function SendMoneyPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [searching, setSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState<typeof RECENTS>([]);
+  const [searchResults, setSearchResults] = useState<UserResult[]>([]);
+  const [recentContacts, setRecentContacts] = useState<RecentContact[]>([]);
+  const [contactsLoading, setContactsLoading] = useState(true);
+  const [contactsError, setContactsError] = useState('');
+  const [searchError, setSearchError] = useState('');
   
   // Selection States
-  const [selectedUser, setSelectedUser] = useState<typeof RECENTS[0] | null>(null);
+  const [selectedUser, setSelectedUser] = useState<{ id: string, name: string, phone: string } | null>(null);
   
   // Payment States
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
   const [refNumber, setRefNumber] = useState('');
+  const [sendError, setSendError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Slider State
   const x = useMotionValue(0);
   const dragProgress = useTransform(x, [0, 220], [0, 1]);
   const bgOpacity = useTransform(dragProgress, [0, 1], [0.1, 1]);
   const textOpacity = useTransform(dragProgress, [0, 0.5], [1, 0]);
+  const canSlideToSend = Number(amount) > 0 && !isSubmitting;
 
   // Debounce logic
   useEffect(() => {
@@ -44,42 +61,107 @@ export default function SendMoneyPage() {
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  // Mock API Search
+  useEffect(() => {
+    let isMounted = true;
+    setContactsLoading(true);
+    setContactsError('');
+
+    transactionService
+      .getRecentContacts()
+      .then((res) => {
+        if (isMounted) {
+          setRecentContacts(res?.contacts || []);
+        }
+      })
+      .catch((error: any) => {
+        if (isMounted) {
+          setContactsError(error?.response?.data?.message || 'Unable to load recent contacts');
+          setRecentContacts([]);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setContactsLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // API Search
   useEffect(() => {
     if (!debouncedQuery) {
       setSearchResults([]);
       setSearching(false);
+      setSearchError('');
       return;
     }
     setSearching(true);
-    const timer = setTimeout(() => {
-      const term = debouncedQuery.toLowerCase();
-      const results = RECENTS.filter(r => r.name.toLowerCase().includes(term) || r.phone.includes(term));
-      setSearchResults(results);
-      setSearching(false);
-    }, 500);
-    return () => clearTimeout(timer);
+    setSearchError('');
+    let isMounted = true;
+    userService.searchUsers(debouncedQuery).then(res => {
+      if(isMounted) {
+        setSearchResults(res.users);
+      }
+    }).catch((error: any) => {
+      if (isMounted) {
+        setSearchResults([]);
+        setSearchError(error?.response?.data?.message || 'Search is unavailable right now');
+      }
+    }).finally(() => {
+      if(isMounted) setSearching(false);
+    });
+    return () => { isMounted = false; };
   }, [debouncedQuery]);
 
-  const handleDragEnd = async (_: any, info: any) => {
-    if (info.offset.x >= 200) {
-      // Success! Proceed to send.
-      try {
-        await Haptics.notification({ type: NotificationType.Success });
-      } catch {}
+  useEffect(() => {
+    setSendError('');
+    setIsSubmitting(false);
+    x.set(0);
+  }, [selectedUser, x]);
 
-      // Snap slider to end and show success
-      x.set(220);
-      setTimeout(() => {
-        setRefNumber('TXN' + Math.floor(Math.random() * 1000000000).toString());
-        setIsSuccess(true);
-        confetti({
-          particleCount: 150,
-          spread: 80,
-          origin: { y: 0.5 },
-          colors: ['#4285F4', '#34A853', '#EA4335', '#FBBC04']
+  const handleDragEnd = async (_: any, info: any) => {
+    const parsedAmount = Number(amount);
+
+    if (isSubmitting) {
+      return;
+    }
+
+    if (info.offset.x >= 200 && parsedAmount > 0 && selectedUser) {
+      // Success! Proceed to send.
+      setSendError('');
+      setIsSubmitting(true);
+
+      try {
+        const response = await transactionService.sendMoney({
+          recipient_identifier: selectedUser.phone, // sending by phone
+          amount: parsedAmount,
+          description: note
         });
-      }, 300);
+        
+        await Haptics.notification({ type: NotificationType.Success });
+        x.set(220);
+        setTimeout(() => {
+          setRefNumber(response.transaction?.reference_no || String(response.transaction?.id || 'N/A'));
+          setIsSuccess(true);
+          confetti({
+            particleCount: 150,
+            spread: 80,
+            origin: { y: 0.5 },
+            colors: ['#4285F4', '#34A853', '#EA4335', '#FBBC04']
+          });
+        }, 300);
+      } catch (e: any) {
+        console.error('Send error:', e);
+        try {
+          await Haptics.notification({ type: NotificationType.Error });
+        } catch {}
+        x.set(0);
+        setSendError(e?.response?.data?.message || 'Transaction failed. Please try again.');
+        setIsSubmitting(false);
+      }
     } else {
       // Reset Spring
       try {
@@ -93,6 +175,7 @@ export default function SendMoneyPage() {
     try {
       await Haptics.impact({ style: ImpactStyle.Light });
     } catch {}
+    setSendError('');
     setAmount(val);
   };
 
@@ -121,7 +204,7 @@ export default function SendMoneyPage() {
           <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }} className="mt-4 flex flex-col items-center">
             <p className="text-text-secondary">You sent <span className="font-bold text-brand-primary">₹{Number(amount).toLocaleString('en-IN')}</span> to</p>
             <div className="mt-4 flex items-center space-x-3 rounded-2xl bg-white/5 px-5 py-3 border border-white/10">
-              <img src={selectedUser?.avatar} alt={selectedUser?.name} className="h-10 w-10 rounded-full bg-bg-secondary" />
+              <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedUser?.name}`} alt={selectedUser?.name} className="h-10 w-10 rounded-full bg-bg-secondary" />
               <div className="text-left">
                 <p className="font-semibold text-white">{selectedUser?.name}</p>
                 <p className="text-xs text-text-tertiary">{selectedUser?.phone}</p>
@@ -201,11 +284,11 @@ export default function SendMoneyPage() {
                 ) : searchResults.length > 0 ? (
                   <div className="flex flex-col space-y-2">
                     {searchResults.map((user) => (
-                      <button key={user.id} onClick={() => setSelectedUser(user)} className="flex items-center space-x-4 rounded-2xl bg-white/5 p-3 transition-colors active:bg-white/10 text-left">
-                        <img src={user.avatar} className="h-12 w-12 rounded-full" />
+                      <button key={user.id} onClick={() => setSelectedUser({ id: user.id, name: user.full_name, phone: user.phone_number })} className="flex items-center space-x-4 rounded-2xl bg-white/5 p-3 transition-colors active:bg-white/10 text-left">
+                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.full_name}`} alt={user.full_name} className="h-12 w-12 rounded-full bg-white/5" />
                         <div>
-                          <p className="font-semibold text-white">{user.name}</p>
-                          <p className="text-sm text-text-secondary">{user.phone}</p>
+                          <p className="font-semibold text-white">{user.full_name}</p>
+                          <p className="text-sm text-text-secondary">{user.phone_number}</p>
                         </div>
                       </button>
                     ))}
@@ -213,7 +296,7 @@ export default function SendMoneyPage() {
                 ) : (
                   <div className="flex flex-col items-center justify-center py-10 opacity-50">
                     <UserIcon size={48} className="mb-4 text-text-tertiary" />
-                    <p className="text-white">No user found</p>
+                    <p className="text-white">{searchError || 'No user found'}</p>
                   </div>
                 )}
               </div>
@@ -221,16 +304,29 @@ export default function SendMoneyPage() {
               // Recent Contacts
               <div>
                 <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-text-tertiary">Recent contacts</h3>
-                <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide">
-                  {RECENTS.map((user) => (
-                    <button key={user.id} onClick={() => setSelectedUser(user)} className="flex flex-col items-center space-y-2 w-16 shrink-0 group">
-                      <div className="relative h-14 w-14 rounded-full border-2 border-transparent group-active:border-brand-primary transition-colors overflow-hidden">
-                        <img src={user.avatar} className="h-full w-full object-cover bg-white/5" />
+                {contactsLoading ? (
+                  <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide animate-pulse">
+                    {[1, 2, 3, 4].map((item) => (
+                      <div key={item} className="flex flex-col items-center space-y-2 w-16 shrink-0">
+                        <div className="h-14 w-14 rounded-full bg-white/5" />
+                        <div className="h-2 w-10 rounded bg-white/5" />
                       </div>
-                      <p className="text-xs text-center text-text-secondary truncate w-full">{user.name.split(' ')[0]}</p>
-                    </button>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide">
+                    {recentContacts.map((user) => (
+                      <button key={user.id} onClick={() => setSelectedUser({ id: user.id, name: user.full_name, phone: user.phone_number })} className="flex flex-col items-center space-y-2 w-16 shrink-0 group">
+                        <div className="relative h-14 w-14 rounded-full border-2 border-transparent group-active:border-brand-primary transition-colors overflow-hidden">
+                          <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.full_name}`} alt={user.full_name} className="h-full w-full object-cover bg-white/5" />
+                        </div>
+                        <p className="text-xs text-center text-text-secondary truncate w-full">{user.full_name.split(' ')[0]}</p>
+                      </button>
+                    ))}
+                    {!contactsError && recentContacts.length === 0 && <p className="text-xs text-text-tertiary">No recent contacts</p>}
+                    {contactsError && <p className="text-xs text-accent-send">{contactsError}</p>}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -242,7 +338,7 @@ export default function SendMoneyPage() {
           <div className="px-6 flex flex-col items-center pt-2">
             {/* Selected User Badge */}
             <div className="flex items-center space-x-3 rounded-full bg-white/5 pr-6 pl-2 py-2 border border-white/10 mb-8 max-w-full">
-              <img src={selectedUser.avatar} className="h-10 w-10 rounded-full" />
+              <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedUser.name}`} className="h-10 w-10 rounded-full" />
               <div className="truncate text-left">
                 <p className="font-semibold text-white truncate text-sm">Sending to {selectedUser.name}</p>
                 <p className="text-xs text-text-tertiary truncate">{selectedUser.phone}</p>
@@ -265,6 +361,7 @@ export default function SendMoneyPage() {
                   const parts = val.split('.');
                   if (parts.length > 2) return;
                   if (parts[1]?.length > 2) val = `${parts[0]}.${parts[1].slice(0, 2)}`;
+                  setSendError('');
                   setAmount(val);
                 }}
               />
@@ -293,6 +390,10 @@ export default function SendMoneyPage() {
                 className="w-full rounded-2xl bg-white/5 px-4 py-4 text-center text-sm text-white outline-none backdrop-blur-md transition-colors placeholder:text-text-tertiary focus:bg-white/10 border border-transparent focus:border-white/10"
               />
             </div>
+
+            {sendError && (
+              <p className="mt-4 text-center text-sm font-medium text-accent-send">{sendError}</p>
+            )}
           </div>
 
           <div className="px-6 pb-10">
@@ -311,22 +412,24 @@ export default function SendMoneyPage() {
                 className="absolute inset-0 flex items-center justify-center pointer-events-none"
               >
                 <div className="flex items-center text-text-secondary/70 font-semibold tracking-wider">
-                  <span className="uppercase text-sm">Slide to Send</span>
-                  <div className="ml-2 flex space-x-1 opacity-50">
-                     <ArrowRight size={14} />
-                     <ArrowRight size={14} className="-ml-2" />
-                  </div>
+                  <span className="uppercase text-sm">{isSubmitting ? 'Sending...' : 'Slide to Send'}</span>
+                  {!isSubmitting && (
+                    <div className="ml-2 flex space-x-1 opacity-50">
+                       <ArrowRight size={14} />
+                       <ArrowRight size={14} className="-ml-2" />
+                    </div>
+                  )}
                 </div>
               </motion.div>
 
               {/* The Draggable Thumb */}
               <motion.div
-                drag="x"
+                drag={canSlideToSend ? 'x' : false}
                 dragConstraints={{ left: 0, right: 280 }} // width minus padding roughly
                 dragElastic={0.05}
                 onDragEnd={handleDragEnd}
                 style={{ x }}
-                className="absolute z-10 ml-2 h-16 w-16 cursor-grab active:cursor-grabbing rounded-full bg-bg-secondary border border-white/10 flex justify-center items-center shadow-lg"
+                className={`absolute z-10 ml-2 h-16 w-16 rounded-full bg-bg-secondary border border-white/10 flex justify-center items-center shadow-lg ${canSlideToSend ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed opacity-80'}`}
               >
                 <div className="h-12 w-12 rounded-full bg-brand-primary flex items-center justify-center shadow-[0_0_15px_rgba(66,133,244,0.5)]">
                   <ArrowRight className="text-white" size={24} />

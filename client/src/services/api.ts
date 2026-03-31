@@ -3,9 +3,9 @@ import { Preferences } from '@capacitor/preferences';
 
 // 5. Backend API Design -> 5.1 Base URL
 // Vite exposes import.meta.env.MODE to determine the current environment
-const API_URL = import.meta.env.MODE === 'production' 
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.MODE === 'production' 
   ? 'https://adipay-api.onrender.com/api'
-  : 'http://localhost:3000/api';
+  : 'http://localhost:3000/api');
 
 const api = axios.create({
   baseURL: API_URL,
@@ -43,8 +43,10 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       // If server rejects our token, wipe it locally
       await Preferences.remove({ key: 'jwt_token' });
-      // Depending on router architecture, forced redirect to /login might happen here
-      // window.location.href = '/login'; 
+      const currentPath = window.location.pathname;
+      if (currentPath !== '/login' && currentPath !== '/signup' && currentPath !== '/splash' && currentPath !== '/onboarding') {
+        window.location.href = '/login'; 
+      }
     }
     return Promise.reject(error);
   }

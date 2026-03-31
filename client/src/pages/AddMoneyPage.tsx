@@ -1,50 +1,95 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Wallet, Check, AlertCircle } from 'lucide-react';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import confetti from 'canvas-confetti';
+import { walletService } from '../services/walletService';
 
 export default function AddMoneyPage() {
   const navigate = useNavigate();
   const [amount, setAmount] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
   const [refNumber, setRefNumber] = useState('');
+  const [currentBalance, setCurrentBalance] = useState<number>(0);
+  const [balanceLoading, setBalanceLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [submitError, setSubmitError] = useState('');
 
-  const currentBalance = 12450.00;
+  useEffect(() => {
+    let isMounted = true;
+    setBalanceLoading(true);
+    setLoadError('');
+
+    walletService
+      .getBalance()
+      .then((res) => {
+        if (isMounted) {
+          setCurrentBalance(Number(res.balance || 0));
+        }
+      })
+      .catch((error: any) => {
+        if (isMounted) {
+          setLoadError(error?.response?.data?.message || 'Unable to load wallet balance');
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setBalanceLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleChipSelect = async (val: string) => {
     try {
       await Haptics.impact({ style: ImpactStyle.Light });
     } catch {}
+    setSubmitError('');
     setAmount(val);
   };
 
   const handleAddMoney = async () => {
-    if (!amount || Number(amount) <= 0) {
+    if (!amount || Number(amount) <= 0 || loading) {
       try {
         await Haptics.impact({ style: ImpactStyle.Heavy });
       } catch {}
       return;
     }
 
+    setLoading(true);
+    setSubmitError('');
+
     try {
-      await Haptics.notification({ type: NotificationType.Success });
-    } catch {}
+      const res = await walletService.addMoney(Number(amount));
+      
+      try {
+        await Haptics.notification({ type: NotificationType.Success });
+      } catch {}
 
-    setRefNumber('ADD' + Math.floor(Math.random() * 1000000000).toString());
-    setIsSuccess(true);
-    
-    confetti({
-      particleCount: 150,
-      spread: 80,
-      origin: { y: 0.5 },
-      colors: ['#4285F4', '#34A853', '#EA4335', '#FBBC04']
-    });
+      setRefNumber(res.transaction?.reference_no || String(res.transaction?.id || 'N/A'));
+      setIsSuccess(true);
+      
+      confetti({
+        particleCount: 150,
+        spread: 80,
+        origin: { y: 0.5 },
+        colors: ['#4285F4', '#34A853', '#EA4335', '#FBBC04']
+      });
 
-    setTimeout(() => {
-      navigate('/home', { replace: true });
-    }, 2500);
+      setTimeout(() => {
+        navigate('/home', { replace: true });
+      }, 2500);
+    } catch (e: any) {
+      console.error(e);
+      setSubmitError(e?.response?.data?.message || 'Unable to add money right now');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (isSuccess) {
@@ -119,8 +164,16 @@ export default function AddMoneyPage() {
               </div>
               <span className="font-medium text-text-secondary">Current Balance</span>
             </div>
-            <span className="font-mono text-lg font-bold text-white">₹{currentBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+              <span className="font-mono text-lg font-bold text-white">
+                {balanceLoading
+                  ? 'Loading...'
+                  : `₹${currentBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
+              </span>
           </div>
+
+            {loadError && (
+              <p className="mt-3 w-full text-sm font-medium text-accent-send">{loadError}</p>
+            )}
 
           {/* Amount Input */}
           <div className="flex w-full justify-center items-center py-12">
@@ -138,6 +191,7 @@ export default function AddMoneyPage() {
                 const parts = val.split('.');
                 if (parts.length > 2) return;
                 if (parts[1]?.length > 2) val = `${parts[0]}.${parts[1].slice(0, 2)}`;
+                setSubmitError('');
                 setAmount(val);
               }}
             />
@@ -171,16 +225,20 @@ export default function AddMoneyPage() {
 
           <button
             onClick={handleAddMoney}
-            disabled={!amount || Number(amount) <= 0}
+            disabled={!amount || Number(amount) <= 0 || loading}
             className={`group flex w-full items-center justify-center space-x-2 rounded-2xl py-4 font-semibold text-white transition-all active:scale-[0.98] ${
-              !amount || Number(amount) <= 0 
+              !amount || Number(amount) <= 0 || loading
                 ? 'bg-white/10 text-white/50 cursor-not-allowed'
                 : 'bg-gradient-to-r from-[#4285F4] to-[#5B9EF7] shadow-[0_8px_20px_-6px_rgba(66,133,244,0.6)]'
             }`}
           >
-            <span>Add to Wallet</span>
+            <span>{loading ? 'Processing...' : 'Add to Wallet'}</span>
             <ArrowRight size={20} className="transition-transform group-hover:translate-x-1" />
           </button>
+
+          {submitError && (
+            <p className="text-center text-sm font-medium text-accent-send">{submitError}</p>
+          )}
         </div>
       </motion.div>
     </div>
